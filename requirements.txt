@@ -9,7 +9,9 @@ sentencepiece==0.2.0
 git+https://github.com/csebuetnlp/normalizer
 
 # OCR
-easyocr==1.7.1
+# easyocr==1.7.1
+
+pytesseract==0.3.13
 
 # Image
 Pillow==10.3.0
