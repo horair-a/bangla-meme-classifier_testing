@@ -10,6 +10,7 @@ import warnings
 import numpy as np
 import streamlit as st
 from PIL import Image
+from load_from_hub import get_checkpoint_path
 
 warnings.filterwarnings("ignore")
 
@@ -284,18 +285,14 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Sidebar: checkpoint upload ──────────────────────────────────────────────
+# ── Sidebar: setup ───────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ Setup")
     st.markdown("""
-**Step 1 — Upload your checkpoint**  
-Upload the `.pt` checkpoint file trained from the IACF notebook.
+**Step 1 — Checkpoint**
+
+The IACF checkpoint is loaded automatically from Hugging Face.
     """)
-    ckpt_file = st.file_uploader(
-        "Upload model checkpoint (.pt)",
-        type=["pt"],
-        help="The .pt file saved by the training notebook (iacf_v7_seed*.pt)",
-    )
 
     st.divider()
     st.markdown("""
@@ -308,32 +305,18 @@ Bengali OCR runs automatically. You can also paste extracted text manually.
     st.markdown("""
 **About**  
 - Model: IACF v7 (BanglaBERT + ViT)  
-- Free deployment on [Streamlit Cloud](https://streamlit.io/cloud)  
-- No API key needed  
+- Checkpoint: Hugging Face Hub  
+- App: Streamlit Cloud  
     """)
 
-# ── Main area ───────────────────────────────────────────────────────────────
-if ckpt_file is None:
-    st.info("👈 Upload your model checkpoint in the sidebar to get started.")
-    st.markdown("""
-### How to deploy for free on Streamlit Cloud
-
-1. **Push this repo to GitHub** (public or private).
-2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app** → select your repo.
-3. Set the main file to `app.py`.
-4. In **Secrets** add nothing (checkpoint is uploaded at runtime).
-5. Click **Deploy** — free tier has enough RAM for BanglaBERT+ViT on CPU.
-
-> **Tip:** For faster startup, upload your checkpoint to [Hugging Face Hub](https://huggingface.co)  
-> (private repo is free) and use `huggingface_hub.hf_hub_download()` to load it automatically.
-    """)
-    st.stop()
-
-# Save uploaded checkpoint to a temp file
-ckpt_path = "/tmp/iacf_checkpoint.pt"
-if not os.path.exists(ckpt_path):
-    with open(ckpt_path, "wb") as f:
-        f.write(ckpt_file.read())
+# ── Load checkpoint + model ──────────────────────────────────────────────────
+with st.spinner("⏳ Downloading checkpoint from Hugging Face..."):
+    try:
+        ckpt_path = get_checkpoint_path()
+        st.success("✅ Checkpoint loaded from Hugging Face.")
+    except Exception as e:
+        st.error(f"❌ Failed to load checkpoint from Hugging Face: {e}")
+        st.stop()
 
 # Load model (cached after first load)
 with st.spinner("⏳ Loading IACF model (BanglaBERT + ViT) — this takes ~60 s on first run…"):
@@ -358,7 +341,7 @@ if uploaded_img is None:
 <div style="border:2px dashed #ced4da; border-radius:12px; padding:3rem;
             text-align:center; color:#6c757d; margin-top:0.5rem;">
   📎 Drag and drop a meme image here, or click to browse<br>
-  <small>JPG · PNG · WEBP · Max 200 MB</small>
+  <small>JPG · PNG · WEBP</small>
 </div>
 """, unsafe_allow_html=True)
     st.stop()
