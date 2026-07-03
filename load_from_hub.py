@@ -20,8 +20,8 @@ Usage in app.py:
 import os
 import streamlit as st
 
-REPO_ID  = "YOUR_HF_USERNAME/YOUR_REPO_NAME"   # ← change this
-FILENAME = "iacf_v7_seed42.pt"                  # ← change to your checkpoint filename
+REPO_ID = "Muhammadhoraira/bangla-meme-iacf-checkpoint"
+FILENAME = "iacf_v7_seed42.pt"
 LOCAL_PATH = "/tmp/iacf_checkpoint.pt"
 
 
