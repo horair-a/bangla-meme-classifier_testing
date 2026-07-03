@@ -296,10 +296,11 @@ The IACF checkpoint is loaded automatically from Hugging Face.
 
     st.divider()
     st.markdown("""
-**OCR Language**  
-Bengali OCR runs automatically. You can also paste extracted text manually.
+**Text Input**  
+For stable deployment, manual text input is recommended.  
+OCR is optional and may be slow on free Streamlit Cloud.
     """)
-    manual_text_mode = st.checkbox("Enter text manually (skip OCR)", value=False)
+    manual_text_mode = st.checkbox("Enter text manually (skip OCR)", value=True)
 
     st.divider()
     st.markdown("""
@@ -354,41 +355,47 @@ with col_img:
     st.image(pil_img, caption="Uploaded meme", use_column_width=True)
 
 with col_ocr:
-    st.markdown("#### 📝 Extracted Text")
-    if manual_text_mode:
-        text_input = st.text_area(
-            "Paste meme text here (Bangla/English):",
-            height=160,
-            placeholder="ইসলামী দলপ্রধানঃ গণহত্যাকারীদের রাজনীতি করার অধিকার নেই...",
-        )
-        extracted_text = text_input
-    else:
-        with st.spinner("🔤 Running OCR…"):
-            try:
-                extracted_text = ocr_image(pil_img)
-            except Exception as e:
-                st.warning(f"OCR failed: {e}. Switching to manual entry.")
-                extracted_text = ""
-                manual_text_mode = True
+    st.markdown("#### 📝 Visible Meme Text")
 
-        if extracted_text:
-            st.markdown(
-                f'<div class="ocr-box">{extracted_text}</div>',
-                unsafe_allow_html=True,
-            )
-            extracted_text = st.text_area(
-                "Edit OCR output if needed:",
-                value=extracted_text,
-                height=80,
-                label_visibility="visible",
-            )
+    if manual_text_mode:
+        extracted_text = st.text_area(
+            "Paste meme text here:",
+            height=160,
+            placeholder="মিমের দৃশ্যমান বাংলা/ইংরেজি লেখা এখানে লিখুন...",
+        )
+
+    else:
+        st.info("OCR is optional. If it fails on Streamlit Cloud, use manual text mode.")
+
+        run_ocr = st.button("🔤 Try OCR Extraction", use_container_width=True)
+
+        if run_ocr:
+            with st.spinner("Running OCR on the uploaded meme..."):
+                try:
+                    extracted_text = ocr_image(pil_img)
+
+                    if extracted_text.strip():
+                        st.success("OCR completed.")
+                        st.markdown(
+                            f'<div class="ocr-box">{extracted_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.warning("OCR did not detect any text.")
+                        extracted_text = ""
+
+                except Exception as e:
+                    st.error(f"OCR failed: {e}")
+                    extracted_text = ""
         else:
-            st.warning("No text detected by OCR. Please enter text manually.")
-            extracted_text = st.text_area(
-                "Enter meme text manually:",
-                height=120,
-                placeholder="Type or paste Bangla/English text here…",
-            )
+            extracted_text = ""
+
+        extracted_text = st.text_area(
+            "Edit OCR text or enter text manually:",
+            value=extracted_text,
+            height=120,
+            placeholder="OCR output will appear here, or you can type manually...",
+        )
 
 # ── Classify button ─────────────────────────────────────────────────────────
 st.divider()
