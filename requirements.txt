@@ -1,0 +1,21 @@
+# Core ML
+torch==2.2.2
+torchvision==0.17.2
+transformers==4.40.0
+accelerate==0.30.1
+sentencepiece==0.2.0
+
+# BanglaBERT normalizer
+git+https://github.com/csebuetnlp/normalizer
+
+# OCR
+easyocr==1.7.1
+
+# Image
+Pillow==10.3.0
+
+# Data
+numpy==1.26.4
+
+# Streamlit
+streamlit==1.35.0
