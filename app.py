@@ -351,7 +351,7 @@ pil_img = Image.open(uploaded_img).convert("RGB")
 col_img, col_ocr = st.columns([1, 1], gap="medium")
 
 with col_img:
-    st.image(pil_img, caption="Uploaded meme", use_container_width=True)
+    st.image(pil_img, caption="Uploaded meme", use_column_width=True)
 
 with col_ocr:
     st.markdown("#### 📝 Extracted Text")
