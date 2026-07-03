@@ -221,22 +221,47 @@ def load_vit_processor():
     return ViTImageProcessor.from_pretrained("google/vit-base-patch16-224")
 
 
-@st.cache_resource(show_spinner=False)
-def load_ocr_reader():
-    """EasyOCR reader for Bengali (bn) + English (en)."""
-    import easyocr
-    return easyocr.Reader(["bn", "en"], gpu=False, verbose=False)
+# ─────────────────────────────────────────────────────────────────────────────
+# OCR helper: Tesseract instead of EasyOCR
+# ─────────────────────────────────────────────────────────────────────────────
+@st.cache_data(show_spinner=False)
+def ocr_image_from_bytes(image_bytes: bytes) -> str:
+    """Extract Bangla + English text using Tesseract OCR.
+
+    This is lighter than EasyOCR and is more suitable for Streamlit Cloud.
+    Requires packages.txt with: tesseract-ocr, tesseract-ocr-ben, tesseract-ocr-eng
+    and requirements.txt with: pytesseract
+    """
+    import pytesseract
+    from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+    # Light preprocessing for meme text
+    gray = ImageOps.grayscale(img)
+    gray = ImageEnhance.Contrast(gray).enhance(1.8)
+    gray = gray.filter(ImageFilter.SHARPEN)
+
+    # Upscale small images for OCR
+    w, h = gray.size
+    if max(w, h) < 1200:
+        scale = 1200 / max(w, h)
+        gray = gray.resize((int(w * scale), int(h * scale)))
+
+    # First try block-text mode; if empty, try sparse-text mode
+    config1 = "--oem 3 --psm 6"
+    text = pytesseract.image_to_string(gray, lang="ben+eng", config=config1).strip()
+
+    if not text:
+        config2 = "--oem 3 --psm 11"
+        text = pytesseract.image_to_string(gray, lang="ben+eng", config=config2).strip()
+
+    return " ".join(text.split())
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Inference helpers
 # ─────────────────────────────────────────────────────────────────────────────
-def ocr_image(pil_img: Image.Image) -> str:
-    """Extract Bangla + English text from meme via EasyOCR."""
-    reader = load_ocr_reader()
-    img_np = np.array(pil_img.convert("RGB"))
-    results = reader.readtext(img_np, detail=0, paragraph=True)
-    return " ".join(results).strip()
 
 
 def normalize_bangla(text: str) -> str:
@@ -296,11 +321,10 @@ The IACF checkpoint is loaded automatically from Hugging Face.
 
     st.divider()
     st.markdown("""
-**Text Input**  
-For stable deployment, manual text input is recommended.  
-OCR is optional and may be slow on free Streamlit Cloud.
+**OCR Language**  
+Bengali + English OCR runs automatically using Tesseract.  
+You can edit the extracted text before classification.
     """)
-    manual_text_mode = st.checkbox("Enter text manually (skip OCR)", value=True)
 
     st.divider()
     st.markdown("""
@@ -355,47 +379,31 @@ with col_img:
     st.image(pil_img, caption="Uploaded meme", use_column_width=True)
 
 with col_ocr:
-    st.markdown("#### 📝 Visible Meme Text")
+    st.markdown("#### 📝 Extracted Text")
 
-    if manual_text_mode:
-        extracted_text = st.text_area(
-            "Paste meme text here:",
-            height=160,
-            placeholder="মিমের দৃশ্যমান বাংলা/ইংরেজি লেখা এখানে লিখুন...",
+    image_bytes = uploaded_img.getvalue()
+
+    with st.spinner("🔤 Running OCR with Tesseract…"):
+        try:
+            extracted_text = ocr_image_from_bytes(image_bytes)
+        except Exception as e:
+            st.error(f"OCR failed: {e}")
+            st.stop()
+
+    if extracted_text:
+        st.markdown(
+            f'<div class="ocr-box">{extracted_text}</div>',
+            unsafe_allow_html=True,
         )
-
-    else:
-        st.info("OCR is optional. If it fails on Streamlit Cloud, use manual text mode.")
-
-        run_ocr = st.button("🔤 Try OCR Extraction", use_container_width=True)
-
-        if run_ocr:
-            with st.spinner("Running OCR on the uploaded meme..."):
-                try:
-                    extracted_text = ocr_image(pil_img)
-
-                    if extracted_text.strip():
-                        st.success("OCR completed.")
-                        st.markdown(
-                            f'<div class="ocr-box">{extracted_text}</div>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.warning("OCR did not detect any text.")
-                        extracted_text = ""
-
-                except Exception as e:
-                    st.error(f"OCR failed: {e}")
-                    extracted_text = ""
-        else:
-            extracted_text = ""
-
         extracted_text = st.text_area(
-            "Edit OCR text or enter text manually:",
+            "Edit OCR output if needed:",
             value=extracted_text,
-            height=120,
-            placeholder="OCR output will appear here, or you can type manually...",
+            height=100,
+            label_visibility="visible",
         )
+    else:
+        st.warning("OCR did not detect text. Try a clearer/larger meme image.")
+        extracted_text = ""
 
 # ── Classify button ─────────────────────────────────────────────────────────
 st.divider()
