@@ -53,12 +53,14 @@ html, body, [class*="css"] {
     font-size: 2.05rem;
     font-weight: 800;
     letter-spacing: -0.02em;
+    color: #ffffff !important;
 }
 .main-header p {
     margin: 0.6rem 0 0;
-    opacity: 0.88;
+    opacity: 0.92;
     font-size: 1rem;
     line-height: 1.55;
+    color: #f8fafc !important;
 }
 
 .section-card {
